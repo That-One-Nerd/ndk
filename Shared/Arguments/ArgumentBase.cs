@@ -17,6 +17,8 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
     // Exposes information about the arguments. This is theoretically not publically needed,
     // but is needed privately for the parsing system.
     public static ReadOnlyCollection<PositionalInfo> PositionalArguments { get; private set; }
+    public static ReadOnlyCollection<VariableInfo> VariableArguments { get; private set; }
+    public static ReadOnlyCollection<FlagInfo> FlagArguments { get; private set; }
 
     // This also exposes debugging information.
     public static ReadOnlyCollection<FieldInfo> InvalidArguments { get; private set; }
@@ -35,11 +37,15 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
         List<ArgumentInfo> all = [];
 
         List<PositionalInfo> posInfos = [];
+        List<VariableInfo> varInfos = [];
+        List<FlagInfo> flagInfos = [];
         List<FieldInfo> invalids = [];
         foreach (FieldInfo field in fields)
         {
             // Get attributes. Conversion to information types is below.
             IsPositionalAttribute? posAtt = field.GetCustomAttribute<IsPositionalAttribute>();
+            IsVariableAttribute? varAtt = field.GetCustomAttribute<IsVariableAttribute>();
+            IsFlagAttribute? flagAtt = field.GetCustomAttribute<IsFlagAttribute>();
 
             // Double-check that this field has a parsable return type.
             // If this is a collection type, use the element type for parsing.
@@ -70,28 +76,64 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
 
             // If this field matches any of those attributes, convert it to its information type
             // for later use.
-            if (posAtt is not null)
+            ArgumentInfo? argInfo = null;
+            if (posAtt is not null) // Positional Argument
             {
                 // TODO: Should we ignore a positional argument if there are two with the same index?
 
-                PositionalInfo posInfo = new()
+                argInfo = new PositionalInfo()
                 {
                     Index = posAtt.Index,
                     Name = posAtt.Name ?? field.Name, // If a name is not specified, autofill with the field name.
-                    Description = posAtt.Description,
-                    Field = field,
-                    IsCollectionType = collection,
-                    ParseMethod = parseMethod,
-                    ElementType = parseType,
-                    IsRemainder = remainder,
+                    Description = posAtt.Description
                 };
-                posInfos.Add(posInfo);
-                all.Add(posInfo);
+                posInfos.Add((argInfo as PositionalInfo)!);
+            }
+            else if (varAtt is not null) // Variable Argument
+            {
+                argInfo = new VariableInfo()
+                {
+                    Name = varAtt.Name ?? field.Name,
+                    Description = varAtt.Description
+                };
+                varInfos.Add((argInfo as VariableInfo)!);
+            }
+            else if (flagAtt is not null) // Flag Argument
+            {
+                // Double check that the field type is compatible.
+                if (field.FieldType != typeof(bool) && field.FieldType != typeof(int))
+                {
+                    // Gotta be a bool or an int.
+                    // The actual conversion is below in the parse function.
+                    // THESE CHECKS SHOULD ALWAYS BE THE SAME OR WEIRD STUFF WILL HAPPEN.
+                    invalids.Add(field);
+                    continue;
+                }
+
+                argInfo = new FlagInfo()
+                {
+                    Name = flagAtt.Name ?? field.Name,
+                    Description = flagAtt.Description
+                };
+                flagInfos.Add((argInfo as FlagInfo)!);
+            }
+
+            if (argInfo is not null)
+            {
+                // Fill in the remaining shared information.
+                argInfo.Field = field;
+                argInfo.IsCollectionType = collection;
+                argInfo.ParseMethod = parseMethod;
+                argInfo.ElementType = parseType;
+                argInfo.IsRemainder = remainder;
+                all.Add(argInfo);
             }
         }
 
         // Done reading info, store in readonlycollections.
         PositionalArguments = new(posInfos);
+        VariableArguments = new(varInfos);
+        FlagArguments = new(flagInfos);
         InvalidArguments = new(invalids);
         allArguments = new(all);
     }
@@ -101,33 +143,83 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
     // for example.
     public bool AnyArguments { get; private set; }
     public ReadOnlyCollection<string> ParsedArguments { get; private set; } = null!;
+    public ReadOnlyCollection<string> DuplicateArguments { get; private set; } = null!;
     public ReadOnlyCollection<string> UnparsedArguments { get; private set; } = null!; // These are both set in the Parse() method.
 
     public static TSelf Parse(string[] argsStr)
     {
         TSelf result = new();
 
-        List<string> parsed = [], unparsed = [];
+        List<string> parsed = [], duplicate = [], unparsed = [];
 
         int posIndex = 0;
         for (int i = 0; i < argsStr.Length; i++)
         {
             string arg = argsStr[i];
-            // TODO: Check for variables and flags.
-            //       When we do that, put the positional code in an "else" statement.
 
-            if (PositionalArguments.Any(x => x.Index == posIndex))
+            ArgumentInfo? argInfo;
+            if ((argInfo = FlagArguments.FirstOrDefault(x => x.Name == arg)) is not null) // Try for a flag argument.
             {
-                // This is a positional argument.
-                PositionalInfo posArg = PositionalArguments.First(x => x.Index == posIndex);
-                GeneralTryParse(arg, posArg, ref i);
-                posIndex++;
+                if (parsed.Contains(arg)) continue; // Already flipped flag, this is a duplicate!
+
+                // Flip the value of this flag.
+                object? val = argInfo.Field.GetValue(result);
+                if (val is bool valBool) val = !valBool;
+                else if (val is int valInt) val = valInt > 0 ? 0 : 1;
+                else val = default;
+
+                // We should always hit one of those conditions. It's checked for in the static constructor.
+                // THESE CHECKS SHOULD ALWAYS BE THE SAME OR WEIRD STUFF WILL HAPPEN.
+                argInfo.Field.SetValue(result, val);
+                parsed.Add(arg);
             }
-            else
+            else if ((argInfo = VariableArguments.FirstOrDefault(x => x.Name == arg.Split(':')[0])) is not null) // Try for a variable argument.
             {
-                // Doesn't match anything. Likely outside the range of positional arguments.
-                unparsed.Add(arg);
-                posIndex++;
+                if (parsed.Contains(arg)) continue; // Already set variable, this is a duplicate!
+
+                // This parser handles two formats for variables:
+                // -varName:varValue
+                // -varName varValue
+                // That's why the name check above is weird. We need to only search for the name.
+
+                string name, value;
+                int separator = arg.IndexOf(':');
+                if (separator != -1)
+                {
+                    name = arg[..separator];
+                    value = arg[(separator + 1)..];
+                }
+                else
+                {
+                    i++;
+                    if (i >= argsStr.Length)
+                    {
+                        // Overflow. Can't parse this argument.
+                        unparsed.Add(arg);
+                        continue;
+                    }
+                    name = arg;
+                    value = argsStr[i];
+                }
+
+                // Parse the value
+                GeneralTryParse(value, argInfo, ref i);
+            }
+            else // Try for a positional argument.
+            {
+                if (PositionalArguments.Any(x => x.Index == posIndex))
+                {
+                    // This is a positional argument.
+                    argInfo = PositionalArguments.First(x => x.Index == posIndex);
+                    GeneralTryParse(arg, argInfo, ref i);
+                    posIndex++;
+                }
+                else
+                {
+                    // Doesn't match anything. Likely outside the range of positional arguments.
+                    unparsed.Add($"Positional[{posIndex}]");
+                    posIndex++;
+                }
             }
         }
 
