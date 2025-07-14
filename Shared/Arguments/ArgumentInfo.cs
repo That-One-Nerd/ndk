@@ -9,8 +9,9 @@ public abstract class ArgumentInfo
     public string? Description { get; internal set; }
     public FieldInfo Field { get; internal set; }
     public bool IsCollectionType { get; internal set; }
-    public bool IsString { get; internal set; }
+    public bool IsRemainder { get; internal set; }
     public MethodInfo? ParseMethod { get; internal set; }
+    public Type ElementType { get; internal set; }
 
     internal ArgumentInfo()
     {
@@ -18,6 +19,7 @@ public abstract class ArgumentInfo
         // See: ArgumentBase.ArgumentBase()
         Name = null!;
         Field = null!;
+        ElementType = null!;
     }
 
     /// <summary>
@@ -27,7 +29,7 @@ public abstract class ArgumentInfo
     /// </summary>
     public bool TryParseElement(string? str, IFormatProvider? provider, out object? obj)
     {
-        if (IsString)
+        if (ElementType == typeof(string))
         {
             // Faster copy, no reflection required.
             obj = str;

@@ -8,7 +8,7 @@ namespace NLang.DevelopmentKit.Hub;
 public class HubArguments : ArgumentBase<HubArguments>
 {
     [IsPositional(0)] public string submodule = "";
-    [IsPositional(1)] public string[] submoduleArgs = [];
+    [IsPositional(1)] [Remainder] public string[] submoduleArgs = [];
 
     public bool showHelp = true;
     public bool showRepository;

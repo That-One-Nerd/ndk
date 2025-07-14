@@ -44,8 +44,15 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             // Double-check that this field has a parsable return type.
             // If this is a collection type, use the element type for parsing.
             Type parseType = field.FieldType;
+            bool remainder = false;
             bool collection = IsCollectionType(parseType, out Type? subType);
-            if (collection) parseType = subType!;
+            if (collection)
+            {
+                parseType = subType!;
+
+                // Check for the Remainder attribute, since this is a collection type.
+                remainder = field.GetCustomAttribute<RemainderAttribute>() is not null;
+            }
 
             // If it is, use reflection to load the specific parse method we need.
             // If it isn't, skip this field.
@@ -75,7 +82,8 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                     Field = field,
                     IsCollectionType = collection,
                     ParseMethod = parseMethod,
-                    IsString = parseType == typeof(string)
+                    ElementType = parseType,
+                    IsRemainder = remainder,
                 };
                 posInfos.Add(posInfo);
                 all.Add(posInfo);
@@ -112,8 +120,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             {
                 // This is a positional argument.
                 PositionalInfo posArg = PositionalArguments.First(x => x.Index == posIndex);
-                if (GeneralTryParse(arg, posArg, result)) parsed.Add(posArg.Name);
-                else unparsed.Add(posArg.Name);
+                GeneralTryParse(arg, posArg, ref i);
                 posIndex++;
             }
             else
@@ -131,13 +138,64 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
 
         return result;
 
-        static bool GeneralTryParse(string arg, ArgumentInfo argInfo, TSelf result)
+        bool GeneralTryParse(string arg, ArgumentInfo argInfo, ref int arrIndex)
         {
             if (argInfo.IsCollectionType)
             {
-                // TODO: We need to parse these.
-                //       The format will be "[itemA,itemB,itemC]"
-                return false;
+                string[] parts;
+                if (argInfo.IsRemainder)
+                {
+                    // Fetch other parameters from the argument array. We set the index here
+                    // so the loop above stops after this. We've exhausted all arguments by now.
+                    parts = argsStr[arrIndex..];
+                    arrIndex = argsStr.Length;
+                }
+                else
+                {
+                    // Use the format "[itemA,itemB,itemC]"
+                    arg = arg.Trim();
+                    if (!arg.StartsWith('[') || !arg.EndsWith(']'))
+                    {
+                        // The brackets are missing or incomplete.
+                        unparsed.Add(argInfo.Name);
+                        return false;
+                    }
+                    parts = arg[1..^1].Split(',');
+                }
+
+                try
+                {
+                    Array argArr = Array.CreateInstance(argInfo.ElementType, parts.Length);
+                    bool allFail = true;
+                    for (int i = 0; i < parts.Length; i++)
+                    {
+                        if (argInfo.TryParseElement(parts[i], null, out object? argElement))
+                        {
+                            // Parsed this element.
+                            argArr.SetValue(argElement, i);
+                            allFail = false;
+                        }
+                        else
+                        {
+                            // Failed the parse. This is tricky. We still set the array and
+                            // consider this a pass, but we also mark the specific index as
+                            // unparsed.
+                            unparsed.Add($"{argInfo.Name}[{i}]");
+                            continue;
+                        }
+                    }
+                    // Now we're done, we can set the argument to the completed array.
+                    argInfo.Field.SetValue(result, argArr);
+                    bool pass = !(allFail && parts.Length > 0);
+                    if (pass) parsed.Add(argInfo.Name); // If at least one element parsed, we consider this a pass.
+                    return pass;
+                }
+                catch
+                {
+                    // Some failure with the array creation, most likely.
+                    // But we can't consider this a success.
+                    return false;
+                }
             }
 
             // Parse the value and save it.
@@ -145,9 +203,15 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             {
                 // Success!
                 argInfo.Field.SetValue(result, argParsed);
+                parsed.Add(argInfo.Name);
                 return true;
             }
-            else return false; // Failed to parse, oops.
+            else
+            {
+                // Failed to parse, oops.
+                unparsed.Add(argInfo.Name);
+                return false;
+            }
         }
     }
 
