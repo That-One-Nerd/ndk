@@ -10,7 +10,7 @@ public class HubArguments : ArgumentBase<HubArguments>
     [IsPositional(0)] public string submodule = "";
     [IsPositional(1)] [Remainder] public string[] submoduleArgs = [];
 
-    public bool showHelp = true;
-    public bool showRepository;
-    public bool showVersion;
+    [IsFlag("--help")] public bool showHelp = true;
+    [IsFlag("--repo")] public bool showRepository;
+    [IsFlag("--version")] public bool showVersion;
 }
