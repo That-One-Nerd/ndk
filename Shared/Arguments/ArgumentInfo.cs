@@ -5,6 +5,7 @@ namespace NLang.DevelopmentKit.Shared.Arguments;
 
 public abstract class ArgumentInfo
 {
+    public string Category { get; set; }
     public string Name { get; internal set; }
     public string? Description { get; internal set; }
     public FieldInfo Field { get; internal set; }
@@ -17,6 +18,7 @@ public abstract class ArgumentInfo
     {
         // These get taken care of where this object is created.
         // See: ArgumentBase.ArgumentBase()
+        Category = "";
         Name = null!;
         Field = null!;
         ElementType = null!;

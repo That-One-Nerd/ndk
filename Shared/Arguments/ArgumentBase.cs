@@ -84,6 +84,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo = new PositionalInfo()
                 {
                     Index = posAtt.Index,
+                    Category = posAtt.Category,
                     Name = posAtt.Name ?? field.Name, // If a name is not specified, autofill with the field name.
                     Description = posAtt.Description
                 };
@@ -94,6 +95,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo = new VariableInfo()
                 {
                     Name = varAtt.Name ?? field.Name,
+                    Category = varAtt.Category,
                     Description = varAtt.Description
                 };
                 varInfos.Add((argInfo as VariableInfo)!);
@@ -113,6 +115,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo = new FlagInfo()
                 {
                     Name = flagAtt.Name ?? field.Name,
+                    Category = flagAtt.Category,
                     Description = flagAtt.Description
                 };
                 flagInfos.Add((argInfo as FlagInfo)!);
@@ -146,6 +149,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
     public ReadOnlyCollection<string> DuplicateArguments { get; private set; } = null!;
     public ReadOnlyCollection<string> UnparsedArguments { get; private set; } = null!; // These are both set in the Parse() method.
 
+    public static IEnumerable<ArgumentInfo> GetInfoByCategory(string category) => allArguments.Where(x => x.Category == category);
     public static TSelf Parse(string[] argsStr)
     {
         TSelf result = new();

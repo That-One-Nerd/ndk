@@ -107,7 +107,7 @@ public static class ModuleLoader
     {
         foreach (ModuleToolInfo toolInfo in registeredTools.Where(predicate)) yield return Get(toolInfo);
     }
-    public static TTool Get<TTool>(string variant, string language) where TTool : IModuleTool
+    public static TTool? Get<TTool>(string variant, string language) where TTool : IModuleTool
     {
         Type toolType = typeof(TTool);
         ModuleToolInfo? toolInfo = registeredTools.FirstOrDefault(x => x.Variant == variant &&
@@ -116,7 +116,7 @@ public static class ModuleLoader
                                                                        x.BaseType == toolType.BaseType ||
                                                                        toolType == typeof(IModuleTool) ||
                                                                        x.Type == toolType));
-        if (toolInfo is null) return default!;
+        if (toolInfo is null) return default;
         else return (TTool)Get(toolInfo);
     }
     public static IEnumerable<TTool> Get<TTool>() where TTool : IModuleTool

@@ -8,6 +8,7 @@ public class IsPositionalAttribute : Attribute
     public string? Name { get; private set; }
     public string? Description { get; private set; }
     public int Index { get; private set; }
+    public string Category { get; set; } = "";
 
     public IsPositionalAttribute(int index)
     {

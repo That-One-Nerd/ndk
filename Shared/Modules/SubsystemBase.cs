@@ -1,0 +1,13 @@
+﻿namespace NLang.DevelopmentKit.Shared.Modules;
+
+public abstract class SubsystemBase : IModuleTool
+{
+    public abstract string Name { get; }
+    string IModuleTool.Language => "";
+    public abstract string Description { get; }
+
+    public abstract void Invoke(string[] args);
+
+    public static SubsystemBase? Get(string name) => ModuleLoader.Get<SubsystemBase>(name, "");
+    static IModuleTool? IModuleTool.Get(string variant, string language) => ModuleLoader.Get<SubsystemBase>(variant, language);
+}
