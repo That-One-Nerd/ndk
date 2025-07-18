@@ -3,6 +3,7 @@ using NLang.DevelopmentKit.Shared.Helpers;
 using NLang.DevelopmentKit.Shared.Modules;
 using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace NLang.DevelopmentKit.Hub;
 
@@ -20,7 +21,7 @@ public static class Program
             DisplayHelp();
             return;
         }
-        else if (args.ParsedArguments.Contains("submodule"))
+        else if (args.ParsedArguments.Contains("subsystem"))
         {
             // Invoke this submodule.
             SubsystemBase? subsystem = SubsystemBase.Get(args.subsystem);
@@ -57,12 +58,64 @@ public static class Program
             subsystemDesc.Add(subsystem.Name, subsystem.Description);
         }
         PrintHelper.PrintKeyValues("Subsystems", 2, subsystemDesc, keyFormat: "\x1b[93m");
-
-        // TODO: Print flags as a "about" category.
+        PrintHelper.PrintArgumentCategory<HubArguments>("About");
     }
     public static void DisplayCredits()
     {
-        // TODO
+        Console.WriteLine($"  \x1b[1;97mRepository:\x1b[22m\n    \x1b[3;32m{NDK.RepositoryUrl}\x1b[0m\n");
+
+        using LoadingBar creditLoader = new(LoadingBarColor.Blue)
+        {
+            FinalText = "Fetched Contributors",
+            Text = "Fetching GitHub Contributors"
+        };
+        string[]? contributors = NDK.GetContributors().GetAwaiter().GetResult();
+        if (contributors is null)
+        {
+            // Failed to load contributors.
+            creditLoader.Failed = true;
+            creditLoader.FinalText = "Failed to Load Contributors";
+            creditLoader.Dispose();
+            Console.WriteLine();
+            return;
+        }
+        creditLoader.Dispose();
+
+        // This used to be here. But our loading message is basically the header now.
+        // If we want it back, it's here:
+        //Console.WriteLine("  \x1b[1;97mContributors:\x1b[22m");
+        StringBuilder result = new();
+
+        int maxLength = 0;
+        for (int i = 0; i < contributors.Length; i++)
+        {
+            string person = contributors[i];
+            if (person.Length > maxLength) maxLength = person.Length;
+        }
+        int spacing = maxLength + 2, indent = 4;
+
+        int totalSpace = Console.WindowWidth - indent - 1,
+            columns = int.Max(1, totalSpace / spacing);
+
+        int rows = 0;
+        for (int p = 0; p < contributors.Length; p++, rows++)
+        {
+            result.Append(new string(' ', indent));
+            for (int c = 0; c < columns && p < contributors.Length; c++, p++)
+            {
+                string person = contributors[p];
+                int extra = spacing - person.Length;
+
+                if ((c + rows) % 2 == 0) result.Append("\x1b[36m");
+                else result.Append("\x1b[94m");
+                result.Append(person);
+                result.Append(new string(' ', extra));
+            }
+            result.AppendLine();
+        }
+        result.Append("\x1b[0m");
+        Console.WriteLine(result);
+
     }
     public static void DisplayVersion()
     {

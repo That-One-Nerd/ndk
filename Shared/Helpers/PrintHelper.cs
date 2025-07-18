@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NLang.DevelopmentKit.Shared.Arguments;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -83,35 +84,58 @@ public static class PrintHelper
         StringBuilder result = new();
         result.Append($"{new string(' ', indent)}\x1b[1;97m{title}:\x1b[22m\n");
 
-        int maxLength = 0;
+        int maxLength = 0, index = 0;
         StringBuilder[] lines = new StringBuilder[values.Count];
-        IEnumerator<KeyValuePair<string, string>> iterator = values.GetEnumerator();
-        for (int i = 0; i < values.Count; i++)
+        foreach (KeyValuePair<string, string> kv in values)
         {
-            iterator.MoveNext();
-            KeyValuePair<string, string> kv = iterator.Current;
-            lines[i] = new StringBuilder().Append($"{new string(' ', indent + 2)}{keyFormat ?? "\x1b[90m"}{kv.Key}");
-
-            int rawKeyLength = visibleStringLength(kv.Key);
-            if (rawKeyLength > maxLength) maxLength = kv.Key.Length;
+            lines[index++] = new StringBuilder().Append($"{new string(' ', indent + 2)}{keyFormat ?? "\x1b[90m"}{kv.Key}");
+            if (kv.Key.Length > maxLength) maxLength = kv.Key.Length;
         }
 
         int desired = maxLength + 2;
-        iterator.Reset();
-        for (int i = 0; i < values.Count; i++)
+        index = 0;
+        foreach (KeyValuePair<string, string> kv in values)
         {
-            iterator.MoveNext();
-            KeyValuePair<string, string> kv = iterator.Current;
-            int rawKeyLength = visibleStringLength(kv.Key);
-            int remaining = desired - rawKeyLength;
-
-            lines[i].Append($"{new string(' ', remaining)}{separatorFormat ?? "\x1b[91m- "}{valueFormat ?? "\x1b[37m"}{kv.Value}\x1b[0m");
-            result.Append(lines[i]);
+            int remaining = desired - kv.Key.Length;
+            lines[index].Append($"{new string(' ', remaining)}{separatorFormat ?? "\x1b[91m- "}{valueFormat ?? "\x1b[37m"}{kv.Value}\x1b[0m");
+            result.Append(lines[index++]);
             result.AppendLine();
         }
         Console.WriteLine(result);
+    }
 
-        static int visibleStringLength(string str) => str.ToCharArray().Where(x => !char.IsControl(x)).Count();
+    public static void PrintArgumentCategory<TArg>(string category) where TArg : ArgumentBase<TArg>, new()
+    {
+        IEnumerable<ArgumentInfo> infos = ArgumentBase<TArg>.GetInfoByCategory(category);
+        int count = infos.Count();
+        StringBuilder result = new();
+        result.Append($"{new string(' ', 2)}\x1b[1;97m{category}:\x1b[22m\n");
+
+        int maxLength = 0, index = 0;
+        StringBuilder[] lines = new StringBuilder[count];
+        foreach (ArgumentInfo arg in infos)
+        {
+            string format = "\x1b[37m";
+            if (arg is VariableInfo) format = "\x1b[36m";
+            else if (arg is FlagInfo) format = "\x1b[90m";
+
+            lines[index++] = new StringBuilder().Append($"{new string(' ', 4)}{format}{arg.Name}");
+            if (arg.Name.Length > maxLength) maxLength = arg.Name.Length;
+        }
+
+        int desired = maxLength + 2;
+        index = 0;
+        foreach (ArgumentInfo arg in infos)
+        {
+            if (!string.IsNullOrWhiteSpace(arg.Description))
+            {
+                int remaining = desired - arg.Name.Length;
+                lines[index].Append($"{new string(' ', remaining)}\x1b[91m- \x1b[37m{arg.Description}\x1b[0m");
+            }
+            result.Append(lines[index++]);
+            result.AppendLine();
+        }
+        Console.WriteLine(result);
     }
 }
 

@@ -36,6 +36,11 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
         FieldInfo[] fields = t.GetFields();
         List<ArgumentInfo> all = [];
 
+        // NOTE: This category system only works as intended so long as the fields
+        //       provided by the GetFields() method are returned in the order they
+        //       are defined in the file. GitHub tells me this is not *always* the
+        //       case.
+        string currentCategory = "";
         List<PositionalInfo> posInfos = [];
         List<VariableInfo> varInfos = [];
         List<FlagInfo> flagInfos = [];
@@ -46,6 +51,11 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             IsPositionalAttribute? posAtt = field.GetCustomAttribute<IsPositionalAttribute>();
             IsVariableAttribute? varAtt = field.GetCustomAttribute<IsVariableAttribute>();
             IsFlagAttribute? flagAtt = field.GetCustomAttribute<IsFlagAttribute>();
+            CategoryAttribute? catAtt = field.GetCustomAttribute<CategoryAttribute>();
+
+            // Handle category changes before everything else, because even an
+            // improperly defined argument should still consider the new category.
+            if (catAtt is not null) currentCategory = catAtt.Category;
 
             // Double-check that this field has a parsable return type.
             // If this is a collection type, use the element type for parsing.
@@ -84,7 +94,6 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo = new PositionalInfo()
                 {
                     Index = posAtt.Index,
-                    Category = posAtt.Category,
                     Name = posAtt.Name ?? field.Name, // If a name is not specified, autofill with the field name.
                     Description = posAtt.Description
                 };
@@ -95,7 +104,6 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo = new VariableInfo()
                 {
                     Name = varAtt.Name ?? field.Name,
-                    Category = varAtt.Category,
                     Description = varAtt.Description
                 };
                 varInfos.Add((argInfo as VariableInfo)!);
@@ -115,7 +123,6 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo = new FlagInfo()
                 {
                     Name = flagAtt.Name ?? field.Name,
-                    Category = flagAtt.Category,
                     Description = flagAtt.Description
                 };
                 flagInfos.Add((argInfo as FlagInfo)!);
@@ -125,6 +132,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             {
                 // Fill in the remaining shared information.
                 argInfo.Field = field;
+                argInfo.Category = currentCategory;
                 argInfo.IsCollectionType = collection;
                 argInfo.ParseMethod = parseMethod;
                 argInfo.ElementType = parseType;

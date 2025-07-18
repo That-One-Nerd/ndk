@@ -28,6 +28,7 @@ public class LoadingBar : IDisposable
         }
     }
     public string? FinalText { get; set; }
+    public bool Failed { get; set; } = false;
     public string Text
     {
         get => _text;
@@ -173,7 +174,8 @@ public class LoadingBar : IDisposable
 
                 TimeSpan duration = DateTime.Now - StartTime;
                 Console.SetCursorPosition(0, lineNumber);
-                Console.Write($"  \x1b[1;97m{FinalText ?? Text}\x1b[22;37m in \x1b[3;93m{FormatBasic(duration)}\x1b[0m");
+                string textFormat = Failed ? "\x1b[1;91m" : "\x1b[1;97m";
+                Console.Write($"  {textFormat}{FinalText ?? Text}\x1b[22;37m in \x1b[3;93m{FormatBasic(duration)}\x1b[0m");
 
                 if (top == lineNumber) Console.WriteLine();
                 else Console.SetCursorPosition(left, top);
