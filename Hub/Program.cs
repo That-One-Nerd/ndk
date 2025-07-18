@@ -62,7 +62,9 @@ public static class Program
     }
     public static void DisplayCredits()
     {
-        Console.WriteLine($"  \x1b[1;97mRepository:\x1b[22m\n    \x1b[3;32m{NDK.RepositoryUrl}\x1b[0m\n");
+        PrintHelper.PrintKeyValues("External Links", 2, new() {
+            { "Repository", NDK.RepositoryUrl }
+        }, separatorFormat: "", valueFormat: "\x1b[3;32m");
 
         using LoadingBar creditLoader = new(LoadingBarColor.Blue)
         {
@@ -119,6 +121,14 @@ public static class Program
     }
     public static void DisplayVersion()
     {
-        // TODO
+        // TODO: Is it possible to encode variables at compile time?
+        //       Like automatically set the date of release as the compilation
+        //       date without manually setting it?
+        PrintHelper.PrintKeyValues("Version", 2, new()
+        {
+            { "Full Version", $"\x1b[95mv{NDK.VersionStr}" },
+            { "Is Prerelease", NDK.IsPrerelease ? "\x1b[33mYes" : "\x1b[94mNo" }
+            //{ "Date of Release", "\x1b[94m???" }
+        }, separatorFormat: "", valueFormat: "");
     }
 }

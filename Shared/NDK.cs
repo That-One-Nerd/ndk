@@ -10,13 +10,16 @@ namespace NLang.DevelopmentKit.Shared;
 
 public static class NDK
 {
-    public static readonly string RepositoryUrl = "https://github.com/That-One-Nerd/ndk";
-    public static readonly string ContributorsUrl = "https://api.github.com/repos/That-One-Nerd/ndk/contributors";
+    public const string RepositoryUrl = "https://github.com/That-One-Nerd/ndk";
+    public const string ContributorsUrl = "https://api.github.com/repos/That-One-Nerd/ndk/contributors";
 
-    public static readonly Version Version = Version.Parse(VersionStr);
-    public const string VersionStr = $"{VersionMajor}.{VersionMinor}";
+    public static readonly Version Version = Version.Parse($"{VersionMajor}.{VersionMinor}");
+    public const string VersionStr = $"{VersionMajor}.{VersionMinor}{VersionSuffix}";
     public const string VersionMajor = "0.1";
     public const string VersionMinor = "0.0";
+    public const string VersionSuffix = "-alpha";
+
+    public static readonly bool IsPrerelease = !string.IsNullOrEmpty(VersionSuffix);
 
     public static async Task<string[]?> GetContributors()
     {
