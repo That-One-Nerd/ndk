@@ -15,11 +15,11 @@ public class IsPositionalAttribute : Attribute
         Name = null;
         Description = null;
     }
-    public IsPositionalAttribute(int index, string name)
+    public IsPositionalAttribute(int index, string description)
     {
         Index = index;
-        Name = name;
-        Description = null;
+        Name = null;
+        Description = description;
     }
     public IsPositionalAttribute(int index, string name, string description)
     {

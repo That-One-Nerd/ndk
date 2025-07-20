@@ -103,39 +103,5 @@ public static class PrintHelper
         }
         Console.WriteLine(result);
     }
-
-    public static void PrintArgumentCategory<TArg>(string category) where TArg : ArgumentBase<TArg>, new()
-    {
-        IEnumerable<ArgumentInfo> infos = ArgumentBase<TArg>.GetInfoByCategory(category);
-        int count = infos.Count();
-        StringBuilder result = new();
-        result.Append($"{new string(' ', 2)}\x1b[1;97m{category}:\x1b[22m\n");
-
-        int maxLength = 0, index = 0;
-        StringBuilder[] lines = new StringBuilder[count];
-        foreach (ArgumentInfo arg in infos)
-        {
-            string format = "\x1b[37m";
-            if (arg is VariableInfo) format = "\x1b[36m";
-            else if (arg is FlagInfo) format = "\x1b[90m";
-
-            lines[index++] = new StringBuilder().Append($"{new string(' ', 4)}{format}{arg.Name}");
-            if (arg.Name.Length > maxLength) maxLength = arg.Name.Length;
-        }
-
-        int desired = maxLength + 2;
-        index = 0;
-        foreach (ArgumentInfo arg in infos)
-        {
-            if (!string.IsNullOrWhiteSpace(arg.Description))
-            {
-                int remaining = desired - arg.Name.Length;
-                lines[index].Append($"{new string(' ', remaining)}\x1b[91m- \x1b[37m{arg.Description}\x1b[0m");
-            }
-            result.Append(lines[index++]);
-            result.AppendLine();
-        }
-        Console.WriteLine(result);
-    }
 }
 

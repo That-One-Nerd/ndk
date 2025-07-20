@@ -3,7 +3,11 @@ using NLang.DevelopmentKit.Shared.Helpers;
 using NLang.DevelopmentKit.Shared.Modules;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
+
+[assembly: AssemblyVersion(NDK.VersionStr)]
+[assembly: AssemblyInformationalVersion(NDK.VersionFull)]
 
 namespace NLang.DevelopmentKit.Hub;
 
@@ -11,7 +15,7 @@ public static class Program
 {
     public static void Main(string[] argsStr)
     {
-        Console.WriteLine($"\n\x1b[1;95m  N Language Suite {NDK.VersionStr}\x1b[0m\n");
+        Console.WriteLine($"\n\x1b[1;95m  N Language Suite {NDK.VersionFull}\x1b[0m\n");
 
         HubArguments args = HubArguments.Parse(argsStr);
 
@@ -58,7 +62,7 @@ public static class Program
             subsystemDesc.Add(subsystem.Name, subsystem.Description);
         }
         PrintHelper.PrintKeyValues("Subsystems", 2, subsystemDesc, keyFormat: "\x1b[93m");
-        PrintHelper.PrintArgumentCategory<HubArguments>("About");
+        HubArguments.PrintCategory("About");
     }
     public static void DisplayCredits()
     {
@@ -126,7 +130,7 @@ public static class Program
         //       date without manually setting it?
         PrintHelper.PrintKeyValues("Version", 2, new()
         {
-            { "Full Version", $"\x1b[95mv{NDK.VersionStr}" },
+            { "Full Version", $"\x1b[95mv{NDK.VersionFull}" },
             { "Is Prerelease", NDK.IsPrerelease ? "\x1b[33mYes" : "\x1b[94mNo" }
             //{ "Date of Release", "\x1b[94m???" }
         }, separatorFormat: "", valueFormat: "");

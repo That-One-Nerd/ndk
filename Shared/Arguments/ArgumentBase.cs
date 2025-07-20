@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
@@ -52,6 +53,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             IsVariableAttribute? varAtt = field.GetCustomAttribute<IsVariableAttribute>();
             IsFlagAttribute? flagAtt = field.GetCustomAttribute<IsFlagAttribute>();
             CategoryAttribute? catAtt = field.GetCustomAttribute<CategoryAttribute>();
+            RequiredAttribute? requiredAtt = field.GetCustomAttribute<RequiredAttribute>();
 
             // Handle category changes before everything else, because even an
             // improperly defined argument should still consider the new category.
@@ -103,7 +105,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             {
                 argInfo = new VariableInfo()
                 {
-                    Name = varAtt.Name ?? field.Name,
+                    Name = varAtt.Name ?? $"-{field.Name}",
                     Description = varAtt.Description
                 };
                 varInfos.Add((argInfo as VariableInfo)!);
@@ -122,7 +124,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
 
                 argInfo = new FlagInfo()
                 {
-                    Name = flagAtt.Name ?? field.Name,
+                    Name = flagAtt.Name ?? $"--{field.Name}",
                     Description = flagAtt.Description
                 };
                 flagInfos.Add((argInfo as FlagInfo)!);
@@ -137,6 +139,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 argInfo.ParseMethod = parseMethod;
                 argInfo.ElementType = parseType;
                 argInfo.IsRemainder = remainder;
+                argInfo.Required = requiredAtt is not null;
                 all.Add(argInfo);
             }
         }
@@ -155,14 +158,22 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
     public bool AnyArguments { get; private set; }
     public ReadOnlyCollection<string> ParsedArguments { get; private set; } = null!;
     public ReadOnlyCollection<string> DuplicateArguments { get; private set; } = null!;
+    public ReadOnlyCollection<string> MissingArguments { get; private set; } = null!;
+    public ReadOnlyCollection<string> UnknownArguments { get; private set; } = null!;
     public ReadOnlyCollection<string> UnparsedArguments { get; private set; } = null!; // These are both set in the Parse() method.
+
+    public static ArgumentInfo? GetArgumentByName(string name) =>
+        allArguments.FirstOrDefault(x => x.Name == name);
 
     public static IEnumerable<ArgumentInfo> GetInfoByCategory(string category) => allArguments.Where(x => x.Category == category);
     public static TSelf Parse(string[] argsStr)
     {
         TSelf result = new();
 
-        List<string> parsed = [], duplicate = [], unparsed = [];
+        List<string> parsed = [], duplicate = [], unknown = [], unparsed = [],
+                     missing = [.. from arg in allArguments
+                                   where arg.Required
+                                   select arg.Name];
 
         int posIndex = 0;
         for (int i = 0; i < argsStr.Length; i++)
@@ -172,7 +183,12 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             ArgumentInfo? argInfo;
             if ((argInfo = FlagArguments.FirstOrDefault(x => x.Name == arg)) is not null) // Try for a flag argument.
             {
-                if (parsed.Contains(arg)) continue; // Already flipped flag, this is a duplicate!
+                if (parsed.Contains(arg))
+                {
+                    // Already flipped flag, this is a duplicate!
+                    duplicate.Add(arg);
+                    continue;
+                }
 
                 // Flip the value of this flag.
                 object? val = argInfo.Field.GetValue(result);
@@ -187,7 +203,12 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             }
             else if ((argInfo = VariableArguments.FirstOrDefault(x => x.Name == arg.Split(':')[0])) is not null) // Try for a variable argument.
             {
-                if (parsed.Contains(arg)) continue; // Already set variable, this is a duplicate!
+                if (parsed.Contains(argInfo.Name))
+                {
+                    // Already set variable, this is a duplicate!
+                    duplicate.Add(argInfo.Name);
+                    continue;
+                }
 
                 // This parser handles two formats for variables:
                 // -varName:varValue
@@ -207,7 +228,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                     if (i >= argsStr.Length)
                     {
                         // Overflow. Can't parse this argument.
-                        unparsed.Add(arg);
+                        unparsed.Add(argInfo.Name);
                         continue;
                     }
                     name = arg;
@@ -229,15 +250,20 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                 else
                 {
                     // Doesn't match anything. Likely outside the range of positional arguments.
-                    unparsed.Add($"Positional[{posIndex}]");
+                    unknown.Add(arg);
                     posIndex++;
                 }
             }
+
+            if (argInfo is not null) missing.Remove(argInfo.Name);
         }
 
         // Set extra collections and we're done!
         result.AnyArguments = parsed.Count > 0;
         result.ParsedArguments = new(parsed);
+        result.DuplicateArguments = new(duplicate);
+        result.MissingArguments = new(missing);
+        result.UnknownArguments = new(unknown);
         result.UnparsedArguments = new(unparsed);
 
         return result;
@@ -319,6 +345,148 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
         }
     }
 
+    public static void PrintCategory(string category, Func<string, string?>? argumentFormats = null)
+    {
+        IEnumerable<ArgumentInfo> infos = GetInfoByCategory(category);
+        int count = infos.Count();
+        StringBuilder result = new();
+        result.Append($"{new string(' ', 2)}\x1b[1;97m{category}:\x1b[22m\n");
+
+        int maxLength = 0, index = 0;
+        StringBuilder[] lines = new StringBuilder[count];
+        foreach (ArgumentInfo arg in infos)
+        {
+            string format = argumentFormats?.Invoke(arg.Name) ?? GetArgumentFormat(arg);
+            lines[index++] = new StringBuilder().Append($"{new string(' ', 4)}{format}{arg.Name}");
+            if (arg.Name.Length > maxLength) maxLength = arg.Name.Length;
+        }
+
+        int desired = maxLength + 2;
+        index = 0;
+        foreach (ArgumentInfo arg in infos)
+        {
+            if (!string.IsNullOrWhiteSpace(arg.Description))
+            {
+                int remaining = desired - arg.Name.Length;
+                lines[index].Append($"{new string(' ', remaining)}\x1b[91m- \x1b[37m{arg.Description}\x1b[0m");
+            }
+            result.Append(lines[index++]);
+            result.AppendLine();
+        }
+        Console.WriteLine(result);
+    }
+    public bool PrintAnyIssues(Func<string, string?>? argumentFormats = null)
+    {
+        // If we || these together like normal,
+        // one being true will cause the program to not print
+        // the other ones (since we know the result will be true).
+        bool fail = false;
+        fail |= PrintUnknown(argumentFormats);
+        fail |= PrintDuplicates(argumentFormats);
+        fail |= PrintMissing(argumentFormats);
+        fail |= PrintUnparsed(argumentFormats);
+        return fail;
+    }
+    public bool PrintDuplicates(Func<string, string?>? argumentFormats = null)
+    {
+        int count = DuplicateArguments.Count;
+        if (count == 0) return false;
+
+        StringBuilder result = new();
+        result.Append($"\x1b[3;33m  {count} {(count == 1 ? "argument was" : "arguments were")} included more than once:\n  ");
+
+        int lineLen = 2, maxLineLen = (int)(0.65 * Console.WindowWidth - 1);
+        foreach (string badArg in DuplicateArguments)
+        {
+            ArgumentInfo badArgInfo = GetArgumentByName(badArg)!;
+            if (lineLen + badArg.Length + 3 > maxLineLen)
+            {
+                // New line.
+                result.Append("\n  ");
+                lineLen = 2;
+            }
+            string format = argumentFormats?.Invoke(badArg) ?? GetArgumentFormat(badArgInfo);
+            result.Append($"\"{format}{badArg}\x1b[0;3;33m\" ");
+            lineLen += badArg.Length + 3;
+        }
+        Console.WriteLine(result.AppendLine("\x1b[0m"));
+        return true;
+    }
+    public bool PrintMissing(Func<string, string?>? argumentFormats = null)
+    {
+        int count = MissingArguments.Count;
+        if (count == 0) return false;
+
+        StringBuilder result = new();
+        result.Append($"\x1b[3;91m  {count} {(count == 1 ? "argument is" : "arguments are")} missing:\n  ");
+
+        int lineLen = 2, maxLineLen = (int)(0.65 * Console.WindowWidth - 1);
+        foreach (string badArg in MissingArguments)
+        {
+            ArgumentInfo badArgInfo = GetArgumentByName(badArg)!;
+            if (lineLen + badArg.Length + 3 > maxLineLen)
+            {
+                // New line.
+                result.Append("\n  ");
+                lineLen = 2;
+            }
+            string format = argumentFormats?.Invoke(badArg) ?? GetArgumentFormat(badArgInfo);
+            result.Append($"\"{format}{badArg}\x1b[0;3;91m\" ");
+            lineLen += badArg.Length + 3;
+        }
+        Console.WriteLine(result.AppendLine("\x1b[0m"));
+        return true;
+    }
+    public bool PrintUnknown(Func<string, string?>? argumentFormats = null)
+    {
+        int count = UnknownArguments.Count;
+        if (count == 0) return false;
+
+        StringBuilder result = new();
+        result.Append($"\x1b[3;33m  {count} {(count == 1 ? "argument was" : "arguments were")} not recognized:\n  ");
+
+        int lineLen = 2, maxLineLen = (int)(0.65 * Console.WindowWidth - 1);
+        foreach (string badArg in UnknownArguments)
+        {
+            if (lineLen + badArg.Length + 3 > maxLineLen)
+            {
+                // New line.
+                result.Append("\n  ");
+                lineLen = 2;
+            }
+            string format = argumentFormats?.Invoke(badArg) ?? GetArgumentFormat(badArg);
+            result.Append($"\"{format}{badArg}\x1b[0;3;33m\" ");
+            lineLen += badArg.Length + 3;
+        }
+        Console.WriteLine(result.AppendLine("\x1b[0m"));
+        return true;
+    }
+    public bool PrintUnparsed(Func<string, string?>? argumentFormats = null)
+    {
+        int count = UnparsedArguments.Count;
+        if (count == 0) return false;
+
+        StringBuilder result = new();
+        result.Append($"\x1b[3;91m  {count} {(count == 1 ? "argument has" : "arguments have")} failed to be parsed:\n  ");
+
+        int lineLen = 2, maxLineLen = (int)(0.65 * Console.WindowWidth - 1);
+        foreach (string badArg in UnparsedArguments)
+        {
+            ArgumentInfo? badArgInfo = GetArgumentByName(badArg);
+            if (lineLen + badArg.Length + 3 > maxLineLen)
+            {
+                // New line.
+                result.Append("\n  ");
+                lineLen = 2;
+            }
+            string format = argumentFormats?.Invoke(badArg) ?? (badArgInfo is null ? GetArgumentFormat(badArg) : GetArgumentFormat(badArgInfo));
+            result.Append($"\"{format}{badArg}\x1b[0;3;91m\" ");
+            lineLen += badArg.Length + 3;
+        }
+        Console.WriteLine(result.AppendLine("\x1b[0m"));
+        return true;
+    }
+
     public override string ToString()
     {
         // TODO: Split up this function and make it more colorful.
@@ -348,6 +516,18 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
     }
 
     #region Helper Functions
+    private static string GetArgumentFormat(ArgumentInfo arg)
+    {
+        if (arg is FlagInfo) return "\x1b[90m";
+        else if (arg is VariableInfo) return "\x1b[36m";
+        else return "\x1b[37m"; // Positional is here.
+    }
+    private static string GetArgumentFormat(string argName)
+    {
+        if (argName.StartsWith("--")) return "\x1b[90m";
+        else if (argName.StartsWith('-')) return "\x1b[36m";
+        else return "\x1b[37m"; // Positional is here.
+    }
     private static bool IsCollectionType(Type type, [NotNullWhen(true)] out Type? subType)
     {
         if (type.IsArray)

@@ -13,6 +13,7 @@ public abstract class ArgumentInfo
     public bool IsRemainder { get; internal set; }
     public MethodInfo? ParseMethod { get; internal set; }
     public Type ElementType { get; internal set; }
+    public bool Required { get; internal set; }
 
     internal ArgumentInfo()
     {

@@ -1,10 +1,15 @@
-﻿using System;
+﻿using NLang.DevelopmentKit.Shared;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+
+[assembly: AssemblyVersion(NDK.VersionStr)]
+[assembly: AssemblyInformationalVersion(NDK.VersionFull)]
 
 namespace NLang.DevelopmentKit.Shared;
 
@@ -14,7 +19,8 @@ public static class NDK
     public const string ContributorsUrl = "https://api.github.com/repos/That-One-Nerd/ndk/contributors";
 
     public static readonly Version Version = Version.Parse($"{VersionMajor}.{VersionMinor}");
-    public const string VersionStr = $"{VersionMajor}.{VersionMinor}{VersionSuffix}";
+    public const string VersionFull = $"{VersionStr}{VersionSuffix}";
+    public const string VersionStr = $"{VersionMajor}.{VersionMinor}";
     public const string VersionMajor = "0.1";
     public const string VersionMinor = "0.0";
     public const string VersionSuffix = "-alpha";
