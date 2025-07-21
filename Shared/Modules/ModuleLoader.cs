@@ -95,8 +95,7 @@ public static class ModuleLoader
 
     private static IModuleTool Get(ModuleToolInfo toolInfo)
     {
-        object? instance;
-        if (!toolInstances.TryGetValue(toolInfo, out instance))
+        if (!toolInstances.TryGetValue(toolInfo, out object? instance))
         {
             instance = Activator.CreateInstance(toolInfo.Type)!;
             toolInstances.Add(toolInfo, instance);

@@ -1,5 +1,6 @@
 ﻿using NLang.DevelopmentKit.Shared;
 using NLang.DevelopmentKit.Shared.Modules;
+using System;
 using System.Reflection;
 
 [assembly: AssemblyVersion(NDK.VersionStr)]

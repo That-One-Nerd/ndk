@@ -8,5 +8,5 @@ namespace NLang.DevelopmentKit.Shared.Modules;
 /// </summary>
 public class IsSubsystemAttribute(string cliName, string version) : ToolAttributeBase(cliName, "", version)
 {
-    public override Type? RequiredBase => typeof(SubsystemBase);
+    public override Type? RequiredBase { get; } = typeof(SubsystemBase);
 }
