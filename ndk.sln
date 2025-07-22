@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Start", "Start\Start.csproj", "{3A867B0D-0F7D-4C67-8BD8-2F5BBEE9E428}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tools.CSharp", "Tools.CSharp\Tools.CSharp.csproj", "{FB3DA8F3-DCBF-4D37-9718-D2EF15D2278A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{3A867B0D-0F7D-4C67-8BD8-2F5BBEE9E428}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A867B0D-0F7D-4C67-8BD8-2F5BBEE9E428}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A867B0D-0F7D-4C67-8BD8-2F5BBEE9E428}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB3DA8F3-DCBF-4D37-9718-D2EF15D2278A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB3DA8F3-DCBF-4D37-9718-D2EF15D2278A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB3DA8F3-DCBF-4D37-9718-D2EF15D2278A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB3DA8F3-DCBF-4D37-9718-D2EF15D2278A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

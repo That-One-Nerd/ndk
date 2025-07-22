@@ -8,8 +8,9 @@ public abstract class LanguageInfoBase : IComparable<LanguageInfoBase>, IModuleT
 {
     public abstract string Identifier { get; }
     public abstract string FullName { get; }
-    public abstract string[] Aliases { get; }
     public abstract string LanguageVersion { get; }
+    public abstract string[] Aliases { get; }
+    public abstract string[] FileExtensions { get; }
 
     string IModuleTool.Name => LanguageVersion;
     string IModuleTool.Language => Identifier;
