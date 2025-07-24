@@ -6,7 +6,7 @@
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AssemblyName>ndk.tools.csharp</AssemblyName>
-		<RootNamespace>NLang.DevelopmentKit.CSharp</RootNamespace>
+		<RootNamespace>NLang.DevelopmentKit.Tools.CSharp</RootNamespace>
 		<BaseOutputPath>..\bin</BaseOutputPath>
 		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
 		<DebugType>embedded</DebugType>
@@ -15,6 +15,12 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\Shared\Shared.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <EmbeddedResource Update="Templates\Templates.resx">
+	    <Generator></Generator>
+	  </EmbeddedResource>
 	</ItemGroup>
 
 </Project>

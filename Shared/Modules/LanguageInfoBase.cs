@@ -52,6 +52,7 @@ public abstract class LanguageInfoBase : IComparable<LanguageInfoBase>, IModuleT
         // And just as an extra compatibility step: we parse the numbers as doubles for
         // situations like c#7.3. it probably won't be used much, but there it is. if
         // three-number versions arise, maybe it would be better to parse as versions.
+        
         // Anyway, lots of talk for not a lot of complexity.
 
         string verA = a.LanguageVersion,
