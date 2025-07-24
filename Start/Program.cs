@@ -42,7 +42,7 @@ public class Program : SubsystemBase
     public void DisplayHelp()
     {
         // Print description and usage.
-        Console.WriteLine($"  \x1b[1;97mDescription:\x1b[0m\n    {DetailedDescription.Replace("\n", "\n    ")}\n");
+        PrintHelper.PrintLargeString("Description", 2, DetailedDescription);
         PrintHelper.PrintList("Usage", 2, [
             "\x1b[95mndk \x1b[93mstart \x1b[32m[language] \x1b[36m[template?]"
         ]);

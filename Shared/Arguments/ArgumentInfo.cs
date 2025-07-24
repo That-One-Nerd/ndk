@@ -30,7 +30,7 @@ public abstract class ArgumentInfo
     /// NOTE: This is always expecting a single value! This does NOT handle collection
     /// types, that's done in ArgumentBase.
     /// </summary>
-    public bool TryParseElement(string? str, IFormatProvider? provider, out object? obj)
+    public bool TryParseElement(string? str, out object? obj)
     {
         if (ElementType == typeof(string))
         {
@@ -38,9 +38,17 @@ public abstract class ArgumentInfo
             obj = str;
             return true;
         }
+        else if (ElementType.IsEnum)
+        {
+            // Call the method slightly differently, since this is an enum.
+            // It's a bit easier to be honest.
+            bool success = Enum.TryParse(ElementType, str, true, out object? result);
+            obj = result;
+            return success;
+        }
         else
         {
-            object?[] args = [str, provider, null];
+            object?[] args = [str, null, null];
             bool success = (bool)ParseMethod!.Invoke(null, args)!;
 
             obj = args[2];

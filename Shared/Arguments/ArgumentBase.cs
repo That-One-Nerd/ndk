@@ -74,17 +74,31 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
 
             // If it is, use reflection to load the specific parse method we need.
             // If it isn't, skip this field.
-            if (parseType.GetInterface("System.IParsable`1") is null && parseType != typeof(string))
+            MethodInfo? parseMethod;
+            if (parseType == typeof(string))
+            {
+                // Strings don't need a parse method.
+                parseMethod = null;
+            }
+            else if (parseType.IsEnum)
+            {
+                // Enums use a different method.
+                parseMethod = null;
+            }
+            else if (parseType.GetInterface("System.IParsable`1") is not null)
+            {
+
+                // VERY specific getmethod arguments so we don't have any ambiguity with other
+                // parse method overloads. The `IParsable` interface guarantees this method will be defined,
+                // except in the case of a string. For that reason, there's a catch for that in the PositionalInfo.TryParse method.
+                parseMethod = parseType.GetMethod("TryParse", BindingFlags.Public | BindingFlags.Static, [typeof(string), typeof(IFormatProvider), parseType.MakeByRefType()])!;
+            }
+            else
             {
                 // This field cannot be parsed into, consider it invalid.
                 invalids.Add(field);
                 continue;
             }
-
-            // VERY specific getmethod arguments so we don't have any ambiguity with other
-            // parse method overloads. The `IParsable` interface guarantees this method will be defined,
-            // except in the case of a string. For that reason, there's a catch for that in the PositionalInfo.TryParse method.
-            MethodInfo parseMethod = parseType.GetMethod("TryParse", BindingFlags.Public | BindingFlags.Static, [typeof(string), typeof(IFormatProvider), parseType.MakeByRefType()])!;
 
             // If this field matches any of those attributes, convert it to its information type
             // for later use.
@@ -259,7 +273,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
         }
 
         // Set extra collections and we're done!
-        result.AnyArguments = parsed.Count > 0;
+        result.AnyArguments = (parsed.Count + unparsed.Count) > 0;
         result.ParsedArguments = new(parsed);
         result.DuplicateArguments = new(duplicate);
         result.MissingArguments = new(missing);
@@ -299,7 +313,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
                     bool allFail = true;
                     for (int i = 0; i < parts.Length; i++)
                     {
-                        if (argInfo.TryParseElement(parts[i], null, out object? argElement))
+                        if (argInfo.TryParseElement(parts[i], out object? argElement))
                         {
                             // Parsed this element.
                             argArr.SetValue(argElement, i);
@@ -329,7 +343,7 @@ public abstract class ArgumentBase<TSelf> where TSelf : ArgumentBase<TSelf>, new
             }
 
             // Parse the value and save it.
-            if (argInfo.TryParseElement(arg, null, out object? argParsed))
+            if (argInfo.TryParseElement(arg, out object? argParsed))
             {
                 // Success!
                 argInfo.Field.SetValue(result, argParsed);

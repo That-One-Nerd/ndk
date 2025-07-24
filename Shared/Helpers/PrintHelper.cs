@@ -1,5 +1,4 @@
-﻿using NLang.DevelopmentKit.Shared.Arguments;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -34,6 +33,49 @@ public static class PrintHelper
         return yes;
     }
 
+    public static void PrintLargeString(string title, int indent, string text)
+    {
+        int maxLineLength = (int)(0.65 * Console.WindowWidth + 1) - indent - 2;
+        string newLine = $"\n{new string(' ', indent + 2)}";
+        StringBuilder result = new($"{new string(' ', indent)}\x1b[1;97m{title}:\x1b[0m{newLine}");
+
+        int textIndex = 0, lineIndex = 0;
+        text = text.Replace("\r\n", " ").Replace('\n', ' ').Trim();
+        while (text.Contains("  ")) text = text.Replace("  ", " ");
+        while (textIndex < text.Length)
+        {
+            int nextWordEnd = text.IndexOf(' ', textIndex);
+            if (nextWordEnd == -1) nextWordEnd = text.Length;
+
+            string word = text[textIndex..nextWordEnd];
+            textIndex = nextWordEnd + 1;
+
+            while (word.Length > maxLineLength)
+            {
+                // The whole word is too big to fit on this line.
+                // Just break it up, whatever.
+                int remaining = maxLineLength - lineIndex;
+                string thisLinePart = word[..remaining];
+                word = word[remaining..];
+                result.Append(thisLinePart).Append(newLine);
+                lineIndex = 0;
+            }
+            if (word.Length > maxLineLength - lineIndex)
+            {
+                // The word is too big to fit on this line, so we put
+                // it on the next one.
+                result.Append(newLine).Append(word).Append(' ');
+                lineIndex = word.Length + 1;
+            }
+            else
+            {
+                // Put the word here.
+                result.Append(word).Append(' ');
+                lineIndex += word.Length + 1;
+            }
+        }
+        Console.WriteLine(result.AppendLine());
+    }
     public static void PrintEnum<T>(string title, int indent, string keyFormat, string? separatorFormat = null, string? descFormat = null)
         where T : struct, Enum => PrintEnum(title, indent, (T val) => keyFormat, separatorFormat, descFormat);
     public static void PrintEnum<T>(string title, int indent, Func<T, string>? keyFormat = null, string? separatorFormat = null,
