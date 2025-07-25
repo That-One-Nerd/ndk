@@ -121,13 +121,16 @@ public static class PrintHelper
         Console.WriteLine(result);
     }
     public static void PrintKeyValues(string title, int indent, Dictionary<string, string> values,
+                                      string? keyFormat = null, string? separatorFormat = null, string? valueFormat = null) =>
+        PrintKeyValues(title, indent, (IEnumerable<KeyValuePair<string, string>>)values, keyFormat, separatorFormat, valueFormat);
+    public static void PrintKeyValues(string title, int indent, IEnumerable<KeyValuePair<string, string>> values,
                                       string? keyFormat = null, string? separatorFormat = null, string? valueFormat = null)
     {
         StringBuilder result = new();
         result.Append($"{new string(' ', indent)}\x1b[1;97m{title}:\x1b[22m\n");
 
         int maxLength = 0, index = 0;
-        StringBuilder[] lines = new StringBuilder[values.Count];
+        StringBuilder[] lines = new StringBuilder[values.Count()];
         foreach (KeyValuePair<string, string> kv in values)
         {
             lines[index++] = new StringBuilder().Append($"{new string(' ', indent + 2)}{keyFormat ?? "\x1b[90m"}{kv.Key}");

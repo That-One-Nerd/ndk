@@ -3,6 +3,8 @@ using NLang.DevelopmentKit.Shared.Helpers;
 using NLang.DevelopmentKit.Shared.Modules;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -23,6 +25,15 @@ public class Program : SubsystemBase
         "console" template) is chosen.
         """;
 
+    // File or directory names that are allowed to exist alongside
+    // the project without a warning. The main example of a valid
+    // directory is the .git/ directory, since it only signifies
+    // that git is present in this project.
+    private static readonly string[] ValidExtraNames = [
+        ".git",
+        ".vs",
+    ];
+
     public override void Invoke(string[] argsStr)
     {
         StartArguments args = StartArguments.Parse(argsStr);
@@ -35,8 +46,147 @@ public class Program : SubsystemBase
 
         if (args.PrintAnyIssues()) return;
 
-        // TODO: Handle project creation.
-        //       Look up templates.
+        LanguageInfoBase? lang = LanguageInfoBase.GetHighest(args.language);
+        if (lang is null)
+        {
+            Console.WriteLine($"  \x1b[3;91mUnknown language \"\x1b[32m{args.language}\x1b[91m.\" Either this language is not supported\n" +
+                               "    or the module defining this language is not installed.\n" +
+                               "  Run \x1b[23;95mndk \x1b[93mstart \x1b[3;91mfor a list of known languages.\x1b[0m\n");
+            return;
+        }
+
+        TemplateBase? template;
+        if (args.template is not null) template = TemplateBase.Get(args.language, args.template);
+        else template = TemplateBase.GetFirst(args.language);
+
+        if (template is null)
+        {
+            if (args.template is null)
+            {
+                Console.WriteLine($"  \x1b[3;91mThe language \"\x1b[32m{args.language}\x1b[91m\" does not appear to have any valid templates!\n" +
+                                   "  Is it possible you forgot to install the language module?\n" +
+                                   "  Run \x1b[23;95mndk \x1b[93mstart \x1b[3;91mfor a list of available templates.\x1b[0m\n");
+            }
+            else
+            {
+                Console.WriteLine($"  \x1b[3;91mThe template \"\x1b[36m{args.template}\x1b[91m\" could not be found for the language \"\x1b[32m{args.language}\x1b[91m\".\n" +
+                                   "  The module defining this template may not have been installed.\n" +
+                                  $"  Run \x1b[23;95mndk \x1b[93mstart \x1b[3;91mfor a list of available templates.\x1b[0m\n");
+            }
+            return;
+        }
+
+        string projectDir = args.rootDirectory ?? Directory.GetCurrentDirectory();
+        string projectName = Path.GetFileName(projectDir);
+
+        Console.WriteLine("  \x1b[1;94mCreating New Project\x1b[0m");
+        PrintHelper.PrintKeyValues("Properties", 2, new()
+        {
+            { "Project Name", $"\x1b[1;97;44m {projectName} " },
+            { "Language",     $"\x1b[1;32m{lang.FullName}\x1b[22;90m (\x1b[92m{lang.LanguageVersion}\x1b[23;90m)" },
+            { "Template",     $"\x1b[1;36m{template.Name}" },
+            { "Directory",    $"\x1b[33m{projectDir}" },
+            { "Project File", $"\x1b[1;93m{projectName}.nproj" },
+            { "NDK Version",  $"\x1b[1;95m{NDK.VersionStr}" }
+        }, valueFormat: "");
+
+        if (InDirectoryWithContents(projectDir, out bool isAlreadyProject))
+        {
+            if (isAlreadyProject)
+            {
+                Console.WriteLine("  \x1b[3;91mThere is an existing project in this directory.\n" +
+                                  "  Please remove that project before creating a new one.\x1b[0m\n");
+                return;
+            }
+            else
+            {
+                Console.Write("  \x1b[3;33mThere are already contents in this directory.\n" +
+                              "  Are you sure you want to continue? \x1b[0m");
+                if (!PrintHelper.GetYesNoQuery())
+                {
+                    Console.WriteLine("\n  \x1b[3;91mOperation cancelled by user.\x1b[0m\n");
+                    return;
+                }
+            }
+        }
+
+        Console.WriteLine();
+        using LoadingBar loading = new(LoadingBarColor.Blue)
+        {
+            FinalText = "Preparing Project",
+            Text = "Extracting Template",
+            PartsTotal = 2
+        };
+
+        switch (template.Format)
+        {
+            case TemplateFormat.Zip: if (ExtractZipTemplate()) break; else return;
+            default:
+                loading.Failed = true;
+                loading.Dispose();
+
+                Console.WriteLine("\n  \x1b[3;91mThis template is encoded in an unknown format.\n" +
+                                  "  Either the template is corrupt (and maybe the module itself), or\n" +
+                                 $"    you are using an old version of the ndk.start module (this is version \x1b[23;95m{NDK.VersionStr}\x1b[3;91m).\x1b[0m\n");
+                break;
+        }
+
+        bool ExtractZipTemplate()
+        {
+            using ZipArchive zip = new(template.DataStream);
+            loading.PartsTotal = zip.Entries.Count(x => !string.IsNullOrEmpty(x.Name));
+            loading.PartsDone = 0;
+
+            foreach (ZipArchiveEntry entry in zip.Entries)
+            {
+                if (string.IsNullOrEmpty(entry.Name))
+                {
+                    // Creating a folder.
+                    string dir = Path.Combine(projectDir, entry.ToString());
+                    Directory.CreateDirectory(dir);
+                }
+                else
+                {
+                    // Creating a file. Double check the folder exists.
+                    // As far as I know, a folder creation entry will ALWAYS
+                    // precede any files in that folder, but I may be wrong.
+                    loading.Text = $"Extracting {entry.Name}...";
+                    string dir = Path.Combine(projectDir, Path.GetDirectoryName(entry.Name)!);
+                    Directory.CreateDirectory(dir);
+
+                    string filePath = Path.Combine(projectDir, entry.ToString());
+                    if (File.Exists(filePath)) File.Delete(filePath);
+
+                    entry.ExtractToFile(filePath);
+                    loading.PartsDone++;
+                }
+            }
+
+            return true;
+        }
+
+        loading.PartsDone = 1;
+        loading.PartsTotal = 2;
+        loading.Text = "Applying Patches";
+
+        // TODO: Replace placeholder variables.
+
+        loading.Dispose();
+        Console.WriteLine();
+    }
+
+    private static bool InDirectoryWithContents(string path, out bool isAlreadyProject)
+    {
+        isAlreadyProject = false;
+        IEnumerable<string> entries = Directory.EnumerateFileSystemEntries(path);
+        foreach (string entry in entries)
+        {
+            string name = Path.GetFileName(entry);
+            if (ValidExtraNames.Contains(name)) continue;
+            else if (name.EndsWith(".nproj")) isAlreadyProject = true;
+            return true;
+        }
+        return false;
     }
 
     public void DisplayHelp()
@@ -70,10 +220,10 @@ public class Program : SubsystemBase
         {
             // Kind of crazy syntax, if I'm being honest. But it works!
             // No AI coding here, folks.
-            if (!templateGroups.TryGetValue((template.Name, template.Description), out List<string>? workLangs))
+            if (!templateGroups.TryGetValue((template.Identifier, template.Description), out List<string>? workLangs))
             {
                 workLangs = [];
-                templateGroups.TryAdd((template.Name, template.Description), workLangs);
+                templateGroups.TryAdd((template.Identifier, template.Description), workLangs);
             }
             if (!workLangs.Contains(template.Language)) workLangs.Add(template.Language);
         }

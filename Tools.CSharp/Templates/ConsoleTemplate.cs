@@ -8,10 +8,12 @@ namespace NLang.DevelopmentKit.Tools.CSharp.Templates;
 [IsTemplate("csharp", "console", NDK.VersionStr)]
 public class ConsoleTemplate : TemplateBase
 {
-    public override string Name => "console";
+    public override string Identifier => "console";
+    public override string Name => "Console Project";
     public override string Language => "csharp";
     public override string Description => "Creates a simple console application.";
     public override Stream DataStream { get; }
+    public override TemplateFormat Format => TemplateFormat.Zip;
 
     public ConsoleTemplate()
     {
