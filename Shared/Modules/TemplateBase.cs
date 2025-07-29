@@ -12,7 +12,7 @@ public abstract class TemplateBase : IModuleTool
     public abstract string Language { get; }
     public abstract TemplateFormat Format { get; }
 
-    string IModuleTool.Name => Identifier;
+    string IModuleTool.Variant => Identifier;
 
     public static TemplateBase? Get(string language, string name) => ModuleLoader.Get<TemplateBase>(name, language);
     static IModuleTool? IModuleTool.Get(string variant, string language) => ModuleLoader.Get<TemplateBase>(variant, language);

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using NLang.DevelopmentKit.Shared.Modules;
+using System;
+using System.Collections.Generic;
 using System.Xml.Linq;
 
 namespace NLang.DevelopmentKit.Shared.Projects;
@@ -8,27 +10,45 @@ namespace NLang.DevelopmentKit.Shared.Projects;
 //       places not natively supported by NLang. See issue #48.
 public class ProjectLinkerInfo
 {
-    public List<string> StandardLibraries { get; } = [];
-    public List<string> ExternalLibraries { get; } = [];
-    public List<string> ProjectReferences { get; } = [];
+    public static ProjectLinkerInfo Default { get; } = new();
+
+    public List<LinkInfoBase> Links { get; } = [];
 
     public static ProjectLinkerInfo FromProjectFile(XElement linkerInfoRoot)
     {
         ProjectLinkerInfo info = new();
+        List<Exception> exceptions = [];
         foreach (XElement reference in linkerInfoRoot.Elements("Reference"))
         {
-            // TODO: Maybe throw an error instead of ignoring.
             XAttribute? type = reference.Attribute("type");
-            if (type is null || reference.Value is null) continue;
-
-            switch (type.Value)
+            if (type is null || reference.Value is null)
             {
-                case "standardlib": info.StandardLibraries.Add(type.Value); break;
-                case "library": info.ExternalLibraries.Add(type.Value); break;
-                case "project": info.ProjectReferences.Add(type.Value); break;
-                default: continue;
+                exceptions.Add(new("A linker reference must have a type attribute."));
+                continue;
             }
+
+            LinkerInfoBase? linker = LinkerInfoBase.Get(type.Value);
+            if (linker is null)
+            {
+                exceptions.Add(new($"The reference type {type.Value} is not known to the linker."));
+                continue;
+            }
+
+            LinkInfoBase result;
+            try
+            {
+                result = linker.ParseReference(reference);
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+                continue;
+            }
+
+            info.Links.Add(result);
         }
-        return info;
+
+        if (exceptions.Count > 0) throw new AggregateException("One or more errors occurred while parsing the linker info.", exceptions);
+        else return info;
     }
 }

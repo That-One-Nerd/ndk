@@ -11,9 +11,6 @@ namespace NLang.DevelopmentKit.Shared.Modules;
 /// </summary>
 public static class ModuleLoader
 {
-    // All attribute types considered important to load.
-    // TODO: We should also allow the creation of custom module attributes,
-    //       but we'll likely need to make this a 2-step loader for that.
     private static readonly Assembly sharedLib = Assembly.GetExecutingAssembly();
     static ModuleLoader() => DetectAssemblies();
 

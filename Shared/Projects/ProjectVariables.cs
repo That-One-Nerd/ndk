@@ -1,10 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Xml.Linq;
 
 namespace NLang.DevelopmentKit.Shared.Projects;
 
-public class ProjectVariables
+public class ProjectVariables : IEnumerable<KeyValuePair<string, string>>
 {
     public required string ProjectName
     {
@@ -113,4 +114,7 @@ public class ProjectVariables
         string? line;
         while ((line = reader.ReadLine()) is not null) writer.WriteLine(FillValues(line));
     }
+
+    public IEnumerator<KeyValuePair<string, string>> GetEnumerator() => variables.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => variables.GetEnumerator();
 }

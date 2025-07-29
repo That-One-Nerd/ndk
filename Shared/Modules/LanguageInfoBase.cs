@@ -12,7 +12,7 @@ public abstract class LanguageInfoBase : IComparable<LanguageInfoBase>, IModuleT
     public abstract string[] Aliases { get; }
     public abstract string[] FileExtensions { get; }
 
-    string IModuleTool.Name => LanguageVersion;
+    string IModuleTool.Variant => LanguageVersion;
     string IModuleTool.Language => Identifier;
 
     // More to come at some point.

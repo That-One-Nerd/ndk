@@ -6,6 +6,7 @@ public abstract class SubsystemBase : IModuleTool
     string IModuleTool.Language => "";
     public abstract string Description { get; }
     public virtual string DetailedDescription { get; }
+    string IModuleTool.Variant => Name;
 
     public SubsystemBase()
     {
