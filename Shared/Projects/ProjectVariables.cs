@@ -55,7 +55,7 @@ public class ProjectVariables
     }
     public bool KnownVariable(string variable) => variables.ContainsKey(variable);
 
-    public void FromVariableInfoNode(XElement varInfoRoot)
+    public void FromProjectFile(XElement varInfoRoot)
     {
         foreach (XElement varInfo in varInfoRoot.Elements())
         {
@@ -70,7 +70,7 @@ public class ProjectVariables
     public void FromProjectFile(XDocument project)
     {
         XElement? varInfoRoot = project.Root?.Element("VariableInfo");
-        if (varInfoRoot is not null) FromVariableInfoNode(varInfoRoot);
+        if (varInfoRoot is not null) FromProjectFile(varInfoRoot);
     }
 
     public string FillValues(string input)
