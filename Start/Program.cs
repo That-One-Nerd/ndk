@@ -1,6 +1,7 @@
 ﻿using NLang.DevelopmentKit.Shared;
 using NLang.DevelopmentKit.Shared.Helpers;
 using NLang.DevelopmentKit.Shared.Modules;
+using NLang.DevelopmentKit.Shared.Projects;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +9,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Xml.Linq;
 
 [assembly: AssemblyVersion(NDK.VersionStr)]
 [assembly: AssemblyInformationalVersion(NDK.VersionFull)]
@@ -107,15 +109,14 @@ public class Program : SubsystemBase
                     Console.WriteLine("\n  \x1b[3;91mOperation cancelled by user.\x1b[0m\n");
                     return;
                 }
+                else Console.WriteLine();
             }
         }
 
-        Console.WriteLine();
         using LoadingBar loading = new(LoadingBarColor.Blue)
         {
             FinalText = "Preparing Project",
-            Text = "Extracting Template",
-            PartsTotal = 2
+            Text = "Extracting Template"
         };
 
         switch (template.Format)
@@ -137,6 +138,26 @@ public class Program : SubsystemBase
             loading.PartsTotal = zip.Entries.Count(x => !string.IsNullOrEmpty(x.Name));
             loading.PartsDone = 0;
 
+            ProjectVariables projVars = new()
+            {
+                ProjectName = projectName
+            };
+
+            ZipArchiveEntry projectEntry = zip.Entries.Single(x => x.Name.EndsWith(".nproj"));
+            if (projectEntry is not null)
+            {
+                // Read project information for environment variables.
+                // We don't need to fully serialize the project by this point,
+                // just read the variableinfo part.
+                using Stream projectStream = projectEntry.Open();
+                try
+                {
+                    XDocument projectDoc = XDocument.Load(projectStream);
+                    projVars.FromProjectFile(projectDoc);
+                }
+                catch { }
+            }
+
             foreach (ZipArchiveEntry entry in zip.Entries)
             {
                 if (string.IsNullOrEmpty(entry.Name))
@@ -150,26 +171,25 @@ public class Program : SubsystemBase
                     // Creating a file. Double check the folder exists.
                     // As far as I know, a folder creation entry will ALWAYS
                     // precede any files in that folder, but I may be wrong.
-                    loading.Text = $"Extracting {entry.Name}...";
-                    string dir = Path.Combine(projectDir, Path.GetDirectoryName(entry.Name)!);
+                    string entryName = projVars.FillValues(entry.Name),
+                           entryStr = projVars.FillValues(entry.ToString());
+                    loading.Text = $"Extracting {entryName}...";
+
+                    string dir = Path.Combine(projectDir, Path.GetDirectoryName(entryStr)!);
                     Directory.CreateDirectory(dir);
 
-                    string filePath = Path.Combine(projectDir, entry.ToString());
+                    string filePath = Path.Combine(projectDir, entryStr);
                     if (File.Exists(filePath)) File.Delete(filePath);
 
-                    entry.ExtractToFile(filePath);
+                    using Stream inFile = entry.Open();
+                    using FileStream outFile = new(filePath, FileMode.CreateNew, FileAccess.Write);
+                    projVars.FillValues(inFile, outFile);
                     loading.PartsDone++;
                 }
             }
 
             return true;
         }
-
-        loading.PartsDone = 1;
-        loading.PartsTotal = 2;
-        loading.Text = "Applying Patches";
-
-        // TODO: Replace placeholder variables.
 
         loading.Dispose();
         Console.WriteLine();
