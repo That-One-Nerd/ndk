@@ -5,7 +5,7 @@ namespace NLang.DevelopmentKit.Shared.Projects;
 
 public abstract class ProjectOutputInfoBase : IModuleTool
 {
-    public abstract string Language { get; }
+    string IModuleTool.Language => "";
     public abstract string Variant { get; }
 
     public abstract void FromProjectFile(XElement outputInfoRoot);

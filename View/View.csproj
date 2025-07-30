@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AssemblyName>ndk.view</AssemblyName>
+		<RootNamespace>NLang.DevelopmentKit.View</RootNamespace>
+		<BaseOutputPath>..\bin</BaseOutputPath>
+		<ProduceReferenceAssembly>True</ProduceReferenceAssembly>
+		<DebugType>embedded</DebugType>
+		<GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Shared\Shared.csproj" />
+	</ItemGroup>
+
+</Project>

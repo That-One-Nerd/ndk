@@ -33,11 +33,14 @@ public static class PrintHelper
         return yes;
     }
 
-    public static void PrintLargeString(string title, int indent, string text)
+    public static void PrintLargeString(string? title, int indent, string text, string? textFormat = null)
     {
         int maxLineLength = (int)(0.65 * Console.WindowWidth + 1) - indent - 2;
         string newLine = $"\n{new string(' ', indent + 2)}";
-        StringBuilder result = new($"{new string(' ', indent)}\x1b[1;97m{title}:\x1b[0m{newLine}");
+        StringBuilder result = new();
+        if (title is not null) result.Append($"{new string(' ', indent)}\x1b[1;97m{title}:\x1b[0m{newLine}");
+        else result.Append(new string(' ', indent + 2));
+        result.Append(textFormat ?? "\x1b[0m");
 
         int textIndex = 0, lineIndex = 0;
         text = text.Replace("\r\n", " ").Replace('\n', ' ').Trim();
@@ -74,7 +77,7 @@ public static class PrintHelper
                 lineIndex += word.Length + 1;
             }
         }
-        Console.WriteLine(result.AppendLine());
+        Console.WriteLine(result.AppendLine("\x1b[0m"));
     }
     public static void PrintEnum<T>(string title, int indent, string keyFormat, string? separatorFormat = null, string? descFormat = null)
         where T : struct, Enum => PrintEnum(title, indent, (T val) => keyFormat, separatorFormat, descFormat);

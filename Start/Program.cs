@@ -48,6 +48,11 @@ public class Program : SubsystemBase
 
         if (args.PrintAnyIssues()) return;
 
+        CreateProject(args);
+    }
+
+    private static void CreateProject(StartArguments args)
+    {
         LanguageInfoBase? lang = LanguageInfoBase.GetHighest(args.language);
         if (lang is null)
         {
