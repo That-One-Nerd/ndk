@@ -1,7 +1,9 @@
-﻿using NLang.DevelopmentKit.Shared.Modules;
+﻿using NLang.DevelopmentKit.Shared.Helpers;
+using NLang.DevelopmentKit.Shared.Modules;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml.Linq;
 
 namespace NLang.DevelopmentKit.Shared.Projects;
@@ -137,5 +139,67 @@ public class ProjectContext
             Output = outputInfo,
             Variables = varInfo
         };
+    }
+
+    public void PrintInfo()
+    {
+        PrintGeneralInfo();
+        PrintCompilerInfo();
+        PrintLinkerInfo();
+        PrintOutputInfo();
+        PrintVariables();
+    }
+    public void PrintGeneralInfo()
+    {
+        bool mismatch = Path.GetFileName(Path.GetDirectoryName(ProjectPath)) !=
+                        Path.GetFileNameWithoutExtension(ProjectPath);
+        string pathFormatted;
+        if (mismatch)
+        {
+            string front    = Path.GetDirectoryName(Path.GetDirectoryName(ProjectPath))!,
+                   folder   = Path.GetFileName(Path.GetDirectoryName(ProjectPath))!,
+                   fileName = Path.GetFileNameWithoutExtension(ProjectPath),
+                   fileExt  = Path.GetExtension(ProjectPath);
+
+            pathFormatted = $"\x1b[93m{front}\\\x1b[33m{folder}\x1b[93m\\\x1b[33m{fileName}\x1b[93m{fileExt}";
+        }
+        else pathFormatted = $"\x1b[93m{ProjectPath}";
+        LanguageInfoBase? lang = LanguageInfoBase.Get(General.Language, General.Version);
+        PrintHelper.PrintKeyValues("General", 2, [
+            ("Project Name", $"\x1b[1;97;44m {ProjectName} {(mismatch ? "\x1b[0;3;33m (mismatch)" : "")}"),
+            ("Project Path", pathFormatted),
+            ("Language",     lang is not null ? $"\x1b[1;32m{lang.FullName}\x1b[22;90m (\x1b[92m{lang.LanguageVersion}\x1b[23;90m)" : $"\x1b[1;91mUnknown\x1b[22;90m (\x1b[92m{General.Language}\x1b[23;90m)")
+        ]);
+    }
+    public void PrintCompilerInfo()
+    {
+        List<(string, string)> properties = [
+            ("Compiler Variant", $"\x1b[1;97;105m {Compiler.Variant} ")
+        ];
+        properties.AddRange(from kv in Compiler.GetFormattedProperties()
+                            select (kv.Item1, Variables.FillValues(kv.Item2)));
+        PrintHelper.PrintKeyValues("Compiler", 2, properties);
+    }
+    public void PrintLinkerInfo()
+    {
+        PrintHelper.PrintKeyValues("Linker", 2, from link in Linker.Links
+                                                select link.GetFormatted(),
+                                   separatorFormat: "\x1b[91m => ");
+    }
+    public void PrintOutputInfo()
+    {
+        List<(string, string)> properties = [
+            ("Output Variant", $"\x1b[1;97;105m {Output.Variant} ")
+        ];
+        properties.AddRange(from kv in Output.GetFormattedProperties()
+                            select (kv.Item1, Variables.FillValues(kv.Item2)));
+        PrintHelper.PrintKeyValues("Output", 2, properties);
+    }
+    public void PrintVariables()
+    {
+        PrintHelper.PrintKeyValues("Variables", 2, from kv in Variables.GetFormattedVariables()
+                                                   where kv.Item1 != nameof(Variables.ProjectName)
+                                                   select kv,
+                                   separatorFormat: "\x1b[91m = ");
     }
 }

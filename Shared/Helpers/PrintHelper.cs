@@ -123,10 +123,10 @@ public static class PrintHelper
         result.Append("\x1b[0m");
         Console.WriteLine(result);
     }
-    public static void PrintKeyValues(string title, int indent, Dictionary<string, string> values,
-                                      string? keyFormat = null, string? separatorFormat = null, string? valueFormat = null) =>
-        PrintKeyValues(title, indent, (IEnumerable<KeyValuePair<string, string>>)values, keyFormat, separatorFormat, valueFormat);
     public static void PrintKeyValues(string title, int indent, IEnumerable<KeyValuePair<string, string>> values,
+                                      string? keyFormat = null, string? separatorFormat = null, string? valueFormat = null) =>
+        PrintKeyValues(title, indent, from kv in values select (kv.Key, kv.Value), keyFormat, separatorFormat, valueFormat);
+    public static void PrintKeyValues(string title, int indent, IEnumerable<ValueTuple<string, string>> values,
                                       string? keyFormat = null, string? separatorFormat = null, string? valueFormat = null)
     {
         StringBuilder result = new();
@@ -134,22 +134,21 @@ public static class PrintHelper
 
         int maxLength = 0, index = 0;
         StringBuilder[] lines = new StringBuilder[values.Count()];
-        foreach (KeyValuePair<string, string> kv in values)
+        foreach ((string key, string value) in values)
         {
-            lines[index++] = new StringBuilder().Append($"{new string(' ', indent + 2)}{keyFormat ?? "\x1b[90m"}{kv.Key}");
-            if (kv.Key.Length > maxLength) maxLength = kv.Key.Length;
+            lines[index++] = new StringBuilder().Append($"{new string(' ', indent + 2)}{keyFormat ?? "\x1b[90m"}{key}");
+            if (key.Length > maxLength) maxLength = key.Length;
         }
 
-        int desired = maxLength + 2;
+        int desired = maxLength + 0;
         index = 0;
-        foreach (KeyValuePair<string, string> kv in values)
+        foreach ((string key, string value) in values)
         {
-            int remaining = desired - kv.Key.Length;
-            lines[index].Append($"{new string(' ', remaining)}{separatorFormat ?? "\x1b[91m- "}{valueFormat ?? "\x1b[37m"}{kv.Value}\x1b[0m");
+            int remaining = desired - key.Length;
+            lines[index].Append($"{new string(' ', remaining)}{separatorFormat ?? "\x1b[91m  - "}{valueFormat ?? "\x1b[37m"}{value}\x1b[0m");
             result.Append(lines[index++]);
             result.AppendLine();
         }
         Console.WriteLine(result);
     }
 }
-

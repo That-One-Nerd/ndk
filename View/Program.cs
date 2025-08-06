@@ -54,6 +54,7 @@ public class Program : SubsystemBase
         if (project is null) return;
 
         Console.WriteLine();
+        project.PrintInfo();
     }
     private static void DisplayDirectory(ViewArguments args)
     {

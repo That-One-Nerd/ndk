@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml.Linq;
 
 namespace NLang.DevelopmentKit.Shared.Projects;
@@ -117,4 +118,13 @@ public class ProjectVariables : IEnumerable<KeyValuePair<string, string>>
 
     public IEnumerator<KeyValuePair<string, string>> GetEnumerator() => variables.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => variables.GetEnumerator();
+
+    public IEnumerable<(string, string)> GetFormattedVariables() =>
+        from kv in this
+        select (kv.Key, $"{GetFormatFor(kv.Key)}{kv.Value}");
+    public static string GetFormatFor(string key) => key switch
+    {
+        nameof(NdkVersion) => "\x1b[1;95m",
+        _ => ""
+    };
 }

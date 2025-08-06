@@ -87,15 +87,14 @@ public class Program : SubsystemBase
         string projectName = Path.GetFileName(projectDir);
 
         Console.WriteLine("  \x1b[1;94mCreating New Project\x1b[0m");
-        PrintHelper.PrintKeyValues("Properties", 2, new()
-        {
-            { "Project Name", $"\x1b[1;97;44m {projectName} " },
-            { "Language",     $"\x1b[1;32m{lang.FullName}\x1b[22;90m (\x1b[92m{lang.LanguageVersion}\x1b[23;90m)" },
-            { "Template",     $"\x1b[1;36m{template.Name}" },
-            { "Directory",    $"\x1b[33m{projectDir}" },
-            { "Project File", $"\x1b[1;93m{projectName}.nproj" },
-            { "NDK Version",  $"\x1b[1;95m{NDK.VersionStr}" }
-        }, valueFormat: "");
+        PrintHelper.PrintKeyValues("Properties", 2, [
+            ("Project Name", $"\x1b[1;97;44m {projectName} "),
+            ("Language",     $"\x1b[1;32m{lang.FullName}\x1b[22;90m (\x1b[92m{lang.LanguageVersion}\x1b[23;90m)"),
+            ("Template",     $"\x1b[1;36m{template.Name}"),
+            ("Directory",    $"\x1b[33m{projectDir}"),
+            ("Project File", $"\x1b[1;93m{projectName}.nproj"),
+            ("NDK Version",  $"\x1b[1;95m{NDK.VersionStr}")
+        ], valueFormat: "");
 
         if (InDirectoryWithContents(projectDir, out bool isAlreadyProject))
         {
@@ -232,7 +231,6 @@ public class Program : SubsystemBase
             StringBuilder aliases = new();
             foreach (string alias in lang.Aliases) aliases.Append($"{alias}, ");
             aliases.Remove(aliases.Length - 2, 2);
-
             langDescs.Add(aliases.ToString(), $"Create an {lang.FullName} project.");
         }
         PrintHelper.PrintKeyValues("Languages", 2, langDescs);

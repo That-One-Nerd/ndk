@@ -22,10 +22,6 @@ public class StandardLibraryLinkerInfo : LinkerInfoBase
 
         public required string Name { get; init; }
 
-        public override string ToString()
-        {
-            // This could probably be improved to be more helpful.
-            return $"StandardLibraryLink: {Name}";
-        }
+        public override (string, string) GetFormatted() => ("Standardlib", $"\x1b[1;36m{Name}");
     }
 }
