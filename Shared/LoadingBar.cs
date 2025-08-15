@@ -1,4 +1,7 @@
-﻿using System;
+﻿using NLang.DevelopmentKit.Shared.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +31,8 @@ public class LoadingBar : IDisposable
         }
     }
     public string? FinalText { get; set; }
-    public bool Failed { get; set; } = false;
+    public string? FailureText { get; set; }
+    public List<Exception> Failures { get; } = [];
     public string Text
     {
         get => _text;
@@ -174,11 +178,25 @@ public class LoadingBar : IDisposable
 
                 TimeSpan duration = DateTime.Now - StartTime;
                 Console.SetCursorPosition(0, lineNumber);
-                string textFormat = Failed ? "\x1b[1;91m" : "\x1b[1;97m";
+                string textFormat = Failures.Count > 0 ? "\x1b[1;91m" : "\x1b[1;97m";
                 Console.Write($"  {textFormat}{FinalText ?? Text}\x1b[22;37m in \x1b[3;93m{FormatBasic(duration)}\x1b[0m");
 
                 if (top == lineNumber) Console.WriteLine();
                 else Console.SetCursorPosition(left, top);
+
+                if (Failures.Count > 0 && FailureText is not null)
+                {
+                    // We do this semi-weird conversion so any child aggregateexceptions
+                    // get flattened correctly. We don't have to do any work!
+                    // We also filter for empty exceptions here. This is a little bit of
+                    // a hack, but it allows for a "failed" condition without a reason.
+                    AggregateException allEx = new(Failures);
+                    Console.WriteLine($"\n  \x1b[1;91m{FailureText}\x1b[0m");
+                    IEnumerable<Exception> toPrint = from ex in allEx.InnerExceptions
+                                                     where !string.IsNullOrWhiteSpace(ex.Message)
+                                                     select ex;
+                    foreach (Exception subEx in toPrint) PrintHelper.PrintLargeString(null, 2, subEx.Message, "\x1b[91m");
+                }
             }
         }
     }

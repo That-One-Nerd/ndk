@@ -10,5 +10,5 @@ public class LanguageInfo : LanguageInfoBase
     public override string FullName => "NC#";
     public override string LanguageVersion => "c#12";
     public override string[] Aliases => ["csharp", "cs"];
-    public override string[] FileExtensions => [".cs"];
+    public override string[] FileExtensions => [".cs", ".ncs"];
 }

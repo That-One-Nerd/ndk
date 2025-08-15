@@ -127,12 +127,9 @@ public class Program : SubsystemBase
         {
             case TemplateFormat.Zip: if (ExtractZipTemplate()) break; else return;
             default:
-                loading.Failed = true;
+                loading.FailureText = "Failed to extract template";
+                loading.Failures.Add(new($"This template is encoded in an unknown format. Either the template is corrupt (and maybe the module itself), or you are using an old version of the ndk.start module (this is version \x1b[23;95m{NDK.VersionStr}\x1b[3;91m)."));
                 loading.Dispose();
-
-                Console.WriteLine("\n  \x1b[3;91mThis template is encoded in an unknown format.\n" +
-                                  "  Either the template is corrupt (and maybe the module itself), or\n" +
-                                 $"    you are using an old version of the ndk.start module (this is version \x1b[23;95m{NDK.VersionStr}\x1b[3;91m).\x1b[0m\n");
                 break;
         }
 

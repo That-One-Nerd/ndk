@@ -10,6 +10,12 @@ namespace NLang.DevelopmentKit.Shared.Projects;
 
 public class ProjectContext
 {
+    // I kinda hate that I need this stupid thing every time I use "enumerate."
+    // In 99% of settings, it's unneccessary. However, the other 1% makes the
+    // program crash with an error that's difficult to diagnose. Why couldn't
+    // this be on by default? Like reflection only seeing public by default.
+    private static readonly EnumerationOptions skipInvalid = new() { IgnoreInaccessible = true };
+
     public required string ProjectName { get; init; }
     public required string ProjectPath { get; init; }
     public required ProjectGeneralInfo General { get; init; }
@@ -20,27 +26,39 @@ public class ProjectContext
 
     internal ProjectContext() { }
 
-    public static ProjectContext? FromDirectory(string dir, bool deep)
+    public static ProjectContext? FromDirectoryPlain(string dir)
     {
-        EnumerationOptions skipInvalid = new() { IgnoreInaccessible = true };
         ProjectContext? result = null;
         foreach (string file in Directory.EnumerateFiles(dir, "*.nproj", skipInvalid))
         {
             if (result is null) result = FromFile(file);
             else throw new("Multiple projects exist in the same root directory!");
         }
-
-        if (deep && result is null)
-        {
-            foreach (string subDir in Directory.EnumerateDirectories(dir, "*", skipInvalid))
-            {
-                ProjectContext? subResult = FromDirectory(subDir, deep);
-                if (result is null) result = subResult;
-                else if (subResult is not null) throw new($"Multiple folders in \"{dir}\" have projects. It is ambiguous which one to pick.");
-            }
-        }
-
         return result;
+    }
+    // This is a stupid method. Not sure what I was thinking when I wrote it. Might remove.
+    [Obsolete("This is a stupid method. I don't think this is a good idea to use. Might remove.")]
+    public static ProjectContext? FromDirectoryOrChild(string dir)
+    {
+        ProjectContext? result = FromDirectoryPlain(dir);
+        if (result is not null) return result;
+
+        foreach (string subDir in Directory.EnumerateDirectories(dir, "*", skipInvalid))
+        {
+            ProjectContext? subResult = FromDirectoryOrChild(subDir);
+            if (result is null) result = subResult;
+            else if (subResult is not null) throw new($"Multiple folders in \"{dir}\" have projects. It is ambiguous which one to pick.");
+        }
+        return result;
+    }
+    public static ProjectContext? FromDirectoryOrParent(string dir)
+    {
+        ProjectContext? result = FromDirectoryPlain(dir);
+        if (result is not null) return result;
+
+        string? next = Path.GetDirectoryName(dir);
+        if (next is null) return null;
+        else return FromDirectoryOrParent(next);
     }
     public static ProjectContext FromFile(string path)
     {

@@ -79,8 +79,7 @@ public static class Program
         if (contributors is null)
         {
             // Failed to load contributors.
-            creditLoader.Failed = true;
-            creditLoader.FinalText = "Failed to Load Contributors";
+            creditLoader.FailureText = "Failed to Load Contributors";
             creditLoader.Dispose();
             Console.WriteLine();
             return;
@@ -121,7 +120,6 @@ public static class Program
         }
         result.Append("\x1b[0m");
         Console.WriteLine(result);
-
     }
     public static void DisplayVersion()
     {
